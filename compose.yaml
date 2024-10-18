@@ -21,7 +21,7 @@ services:
       resources:
         reservations:
           devices:
-            - capabilities: ["gpu"]
+            - capabilities: [ "gpu" ]
               # If you have CDI feature enabled use the following instead
               # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html
               # https://docs.docker.com/reference/cli/dockerd/#enable-cdi-devices
@@ -41,6 +41,20 @@ services:
       - 8000:8000
     volumes:
       - hugging_face_cache:/root/.cache/huggingface
+    environment:
+      - UVICORN_PORT=8000
+      - DEFAULT_LANGUAGE=en
+      - ENABLE_UI=False
+      - DEFAULT_RESPONSE_FORMAT=text
+      - DEVICE=AUTO
+#      - MAX_INACTIVITY_SECONDS=86400  # Set to a very high value (e.g., 1 day)
+#      - MAX_NO_DATA_SECONDS=86400      # Set to a high value (e.g., 1 day)
+      - TASK=transcribe
+      - WHISPER__COMPUTE_TYPE=int8
+#      - WHISPER__MODEL=Systran/faster-whisper-small
+      - WHISPER__MODEL=Systran/faster-whisper-base
+#      - WHISPER__TTL=-1
+
     develop:
       watch:
         - path: faster_whisper_server

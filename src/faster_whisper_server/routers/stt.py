@@ -235,35 +235,68 @@ def transcribe_file(
             return segments_to_response(segments, transcription_info, response_format)
 
 
+# async def audio_receiver(ws: WebSocket, audio_stream: AudioStream) -> None:
+#     config = get_config()  # HACK
+#     try:
+#         while True:
+#             # bytes_ = await asyncio.wait_for(ws.receive_bytes(), timeout=config.max_no_data_seconds)
+#             bytes_ = await asyncio.wait_for(ws.receive_bytes(), timeout=config.max_no_data_seconds)
+#             logger.debug(f"Received {len(bytes_)} bytes of audio data")
+#             audio_samples = audio_samples_from_file(BytesIO(bytes_))
+#             audio_stream.extend(audio_samples)
+#             if audio_stream.duration - config.inactivity_window_seconds >= 0:
+#                 audio = audio_stream.after(audio_stream.duration - config.inactivity_window_seconds)
+#                 vad_opts = VadOptions(min_silence_duration_ms=500, speech_pad_ms=0)
+#                 # NOTE: This is a synchronous operation that runs every time new data is received.
+#                 # This shouldn't be an issue unless data is being received in tiny chunks or the user's machine is a potato.  # noqa: E501
+#                 timestamps = get_speech_timestamps(audio.data, vad_opts)
+#                 if len(timestamps) == 0:
+#                     logger.info(f"No speech detected in the last {config.inactivity_window_seconds} seconds.")
+#                     break
+#                 elif (
+#                     # last speech end time
+#                     config.inactivity_window_seconds - timestamps[-1]["end"] / SAMPLES_PER_SECOND
+#                     >= config.max_inactivity_seconds
+#                 ):
+#                     logger.info(f"Not enough speech in the last {config.inactivity_window_seconds} seconds.")
+#                     break
+#     except TimeoutError:
+#         logger.info(f"No data received in {config.max_no_data_seconds} seconds. Closing the connection.")
+#     except WebSocketDisconnect as e:
+#         logger.info(f"Client disconnected: {e}")
+#     audio_stream.close()
 async def audio_receiver(ws: WebSocket, audio_stream: AudioStream) -> None:
     config = get_config()  # HACK
     try:
         while True:
-            bytes_ = await asyncio.wait_for(ws.receive_bytes(), timeout=config.max_no_data_seconds)
-            logger.debug(f"Received {len(bytes_)} bytes of audio data")
-            audio_samples = audio_samples_from_file(BytesIO(bytes_))
-            audio_stream.extend(audio_samples)
-            if audio_stream.duration - config.inactivity_window_seconds >= 0:
+            try:
+                bytes_ = await asyncio.wait_for(ws.receive_bytes(), timeout=config.max_no_data_seconds)
+                logger.debug(f"Received {len(bytes_)} bytes of audio data")
+                audio_samples = audio_samples_from_file(BytesIO(bytes_))
+                audio_stream.extend(audio_samples)
+
+                # Continue processing the received audio data, such as VAD checks.
                 audio = audio_stream.after(audio_stream.duration - config.inactivity_window_seconds)
                 vad_opts = VadOptions(min_silence_duration_ms=500, speech_pad_ms=0)
-                # NOTE: This is a synchronous operation that runs every time new data is received.
-                # This shouldn't be an issue unless data is being received in tiny chunks or the user's machine is a potato.  # noqa: E501
+
+                # Synchronously process speech timestamps from the audio data
                 timestamps = get_speech_timestamps(audio.data, vad_opts)
-                if len(timestamps) == 0:
-                    logger.info(f"No speech detected in the last {config.inactivity_window_seconds} seconds.")
-                    break
-                elif (
-                    # last speech end time
-                    config.inactivity_window_seconds - timestamps[-1]["end"] / SAMPLES_PER_SECOND
-                    >= config.max_inactivity_seconds
-                ):
-                    logger.info(f"Not enough speech in the last {config.inactivity_window_seconds} seconds.")
-                    break
-    except TimeoutError:
-        logger.info(f"No data received in {config.max_no_data_seconds} seconds. Closing the connection.")
+
+                # Logging timestamps information (this is optional and can be customized)
+                if len(timestamps) != 0:
+                    # logger.info(f"No speech detected in the last {config.inactivity_window_seconds} seconds.")
+                # else:
+                    logger.debug(f"Speech detected with timestamps: {timestamps}")
+
+            except TimeoutError:
+                logger.info(f"No data received in {config.max_no_data_seconds} seconds. Continuing to listen...")
+
     except WebSocketDisconnect as e:
         logger.info(f"Client disconnected: {e}")
-    audio_stream.close()
+    finally:
+        # Close the audio stream when the WebSocket connection ends.
+        audio_stream.close()
+        logger.info("Audio stream closed after WebSocket disconnection.")
 
 
 @router.websocket("/v1/audio/transcriptions")

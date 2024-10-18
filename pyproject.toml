@@ -1,3 +1,10 @@
+[tool.poetry]
+name = "faster-whisper-server"
+version = "0.1.0"
+description = ""
+authors = ["Fran <fgarcete@alumno.unlam.edu.ar>"]
+readme = "README.md"
+
 [project]
 name = "faster-whisper-server"
 version = "0.1.0"

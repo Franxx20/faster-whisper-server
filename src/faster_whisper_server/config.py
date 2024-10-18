@@ -162,7 +162,8 @@ class WhisperConfig(BaseModel):
     compute_type: Quantization = Field(default=Quantization.DEFAULT)
     cpu_threads: int = 0
     num_workers: int = 1
-    ttl: int = Field(default=300, ge=-1)
+    # ttl: int = Field(default=-1, ge=-1)
+    ttl: int = -1
     """
     Time in seconds until the model is unloaded if it is not being used.
     -1: Never unload the model.
@@ -191,12 +192,12 @@ class Config(BaseSettings):
         `export ALLOW_ORIGINS='["*"]'`
     """
 
-    enable_ui: bool = True
+    enable_ui: bool = False
     """
     Whether to enable the Gradio UI. You may want to disable this if you want to minimize the dependencies.
     """
 
-    default_language: Language | None = None
+    default_language: Language | None = Language.EN
     """
     Default language to use for transcription. If not set, the language will be detected automatically.
     It is recommended to set this as it will improve the performance.
@@ -213,7 +214,7 @@ class Config(BaseSettings):
     """
     List of models to preload on startup. By default, the model is first loaded on first request.
     """
-    max_no_data_seconds: float = 1.0
+    max_no_data_seconds: float = 1000.0
     """
     Max duration to wait for the next audio chunk before transcription is finilized and connection is closed.
     """
@@ -222,11 +223,11 @@ class Config(BaseSettings):
     Minimum duration of an audio chunk that will be transcribed.
     """
     word_timestamp_error_margin: float = 0.2
-    max_inactivity_seconds: float = 2.5
+    max_inactivity_seconds: float = 5000
     """
     Max allowed audio duration without any speech being detected before transcription is finilized and connection is closed.
     """  # noqa: E501
-    inactivity_window_seconds: float = 5.0
+    inactivity_window_seconds: float = 10000
     """
     Controls how many latest seconds of audio are being passed through VAD.
     Should be greater than `max_inactivity_seconds`
